@@ -1,0 +1,316 @@
+<title>A320 Banco DGAC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: cockpit-panel two-column — system list (left) + question "display unit" (right); stacks on phone. */
+:root {
+  --bg: #0d1218;          /* panel black-blue */
+  --surface: #151c25;     /* DU bezel */
+  --surface-2: #1c2531;
+  --line: #2a3542;
+  --fg: #dfe6ee;
+  --fg-dim: #8c9aab;
+  --accent: #4ea3ff;      /* selected / managed blue */
+  --accent-2: #8fd0ff;    /* ECAM cyan-blue for actions */
+  --ok: #3ecf8e;
+  --bad: #ff6b5e;
+  --warn: #f0b44c;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5; margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 32px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding-block: 14px 12px; border-bottom: 1px solid var(--line); max-width: 1180px; margin: 0 auto;
+}
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.45rem; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+.brand small { font-family: var(--font-mono); font-size: .72rem; color: var(--fg-dim); letter-spacing: .06em; text-transform: uppercase; }
+.global { margin-left: auto; display: flex; gap: 18px; font-family: var(--font-mono); font-size: .8rem; color: var(--fg-dim); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.global b { color: var(--fg); font-weight: 500; }
+.global .ok b { color: var(--ok); } .global .bad b { color: var(--bad); }
+
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 24px; padding-top: 20px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+
+/* System list */
+.side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.label { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-dim); }
+.groups { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 860px) {
+  .groups { flex-direction: row; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x proximity; }
+  .groups .g { flex: 0 0 220px; scroll-snap-align: start; }
+}
+.g {
+  text-align: left; background: transparent; border: 1px solid transparent; border-radius: 8px;
+  padding: 9px 12px; cursor: pointer; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px;
+}
+.g:hover { background: var(--surface); }
+.g[aria-current="true"] { background: var(--surface-2); border-color: var(--line); }
+.g .nm { font-weight: 600; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g[aria-current="true"] .nm { color: var(--accent-2); }
+.g .ct { font-family: var(--font-mono); font-size: .75rem; color: var(--fg-dim); font-variant-numeric: tabular-nums; align-self: center; }
+.g .en { grid-column: 1 / -1; font-family: var(--font-mono); font-size: .66rem; color: var(--fg-dim); letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { grid-column: 1 / -1; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; display: flex; margin-top: 4px; }
+.bar i { display: block; height: 100%; }
+.bar .o { background: var(--ok); } .bar .x { background: var(--bad); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px;
+  font-size: .82rem; cursor: pointer; color: var(--fg-dim);
+}
+.chip[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.chip:disabled { opacity: .45; cursor: default; }
+
+/* Display unit */
+.du { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px clamp(16px, 3vw, 30px) 24px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.du-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-family: var(--font-mono); font-size: .75rem; color: var(--fg-dim); letter-spacing: .05em; text-transform: uppercase; }
+.du-head .pos { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.du-head .spacer { flex: 1; }
+.conf { border-radius: 4px; padding: 2px 7px; font-size: .68rem; letter-spacing: .06em; border: 1px solid currentColor; }
+.conf.h { color: var(--fg-dim); } .conf.m { color: var(--warn); } .conf.l { color: var(--bad); }
+.q { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.2rem, 2.2vw, 1.45rem); line-height: 1.3; margin: 0; text-wrap: pretty; max-width: 62ch; }
+.opts { display: flex; flex-direction: column; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.opt {
+  width: 100%; text-align: left; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 12px; align-items: start;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 11px 14px; cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.opt:hover:not(:disabled) { border-color: var(--accent); }
+.opt .k { font-family: var(--font-mono); font-weight: 500; width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--accent-2); font-size: .9rem; }
+.opt .t { padding-top: 3px; overflow-wrap: anywhere; }
+.opt:disabled { cursor: default; }
+.opt.correct { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--surface-2)); }
+.opt.correct .k { background: var(--ok); color: var(--bg); border-color: var(--ok); }
+.opt.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, var(--surface-2)); }
+.opt.wrong .k { background: var(--bad); color: var(--bg); border-color: var(--bad); }
+.opt.dim { opacity: .55; }
+
+.verdict { border-radius: 8px; padding: 14px 16px; border: 1px solid var(--line); background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+.verdict .v { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: .03em; text-transform: uppercase; }
+.verdict.ok .v { color: var(--ok); } .verdict.bad .v { color: var(--bad); }
+.verdict p { margin: 0; max-width: 68ch; }
+.verdict .ref { font-family: var(--font-mono); font-size: .76rem; color: var(--fg-dim); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.verdict .ref b { color: var(--accent-2); font-weight: 500; }
+.verdict .note { font-size: .85rem; color: var(--warn); }
+
+.nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 9px 16px; cursor: pointer; font-weight: 500; }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #06111d; font-weight: 600; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.ghost { background: transparent; color: var(--fg-dim); }
+.nav .spacer { flex: 1; }
+.kbd { font-family: var(--font-mono); font-size: .72rem; color: var(--fg-dim); }
+@media (max-width: 560px) { .kbd { display: none; } }
+
+.dots { display: flex; flex-wrap: wrap; gap: 3px; }
+.dots button { width: 12px; height: 12px; padding: 0; border-radius: 3px; border: 0; background: var(--line); cursor: pointer; }
+.dots button.o { background: var(--ok); } .dots button.x { background: var(--bad); }
+.dots button.cur { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+
+.empty { color: var(--fg-dim); padding: 30px 0; text-align: center; }
+.foot { max-width: 1180px; margin: 28px auto 0; font-size: .8rem; color: var(--fg-dim); border-top: 1px solid var(--line); padding-top: 14px; }
+.foot p { margin: 0 0 6px; max-width: 90ch; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .85rem; color: var(--warn); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <div class="brand"><h1>A320 · Banco DGAC</h1><small>Habilitación de tipo · ene 2018</small></div>
+  <div class="global" id="global"></div>
+</header>
+
+<div class="wrap">
+  <aside class="side">
+    <div class="label">Sistemas</div>
+    <nav class="groups" id="groups" aria-label="Grupos de sistemas"></nav>
+    <div class="label">Modo</div>
+    <div class="filters" id="filters"></div>
+  </aside>
+
+  <main class="du" id="du" aria-live="polite"></main>
+</div>
+
+<footer class="foot">
+  <p>Respuestas revisadas contra el FCOM A320 (capítulos DSC/LIM). Las preguntas marcadas <span style="color:var(--warn)">VERIFICAR</span> o <span style="color:var(--bad)">DUDOSA</span> deben contrastarse con el FCOM vigente de tu operador antes del examen.</p>
+  <p id="storeNote"></p>
+</footer>
+
+<script>
+const BANK = /*__DATA__*/null;
+(function () {
+  const STORE_KEY = "a320-dgac-qbank:v1";
+  const CONF = { h: ["ALTA", "Confianza alta"], m: ["VERIFICAR", "Verificar con FCOM"], l: ["DUDOSA", "Dudosa: verificar en FCOM"] };
+  const groups = BANK.groups;
+  const byId = {};
+  groups.forEach(g => g.questions.forEach(q => { byId[q.id] = Object.assign({ gid: g.id }, q); }));
+
+  let saved = {};
+  let storageOk = true;
+  try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { storageOk = false; saved = {}; }
+  const answers = saved.answers || {};
+  const ui = Object.assign({ group: groups[0].id, mode: "all", shuffle: false }, saved.ui || {});
+  let order = [], idx = 0, confirmReset = false;
+
+  function persist() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ answers, ui: { group: ui.group, mode: ui.mode, shuffle: ui.shuffle } })); }
+    catch (e) { storageOk = false; }
+  }
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function stats(list) {
+    let ok = 0, bad = 0;
+    list.forEach(q => { const a = answers[q.id]; if (a) (a === q.answer ? ok++ : bad++); });
+    return { ok, bad, total: list.length };
+  }
+  function groupQs(gid) { return gid === "__all" ? Object.values(byId) : (groups.find(g => g.id === gid) || groups[0]).questions.map(q => byId[q.id]); }
+  function buildOrder(keepId) {
+    let list = groupQs(ui.group);
+    if (ui.mode === "wrong") list = list.filter(q => answers[q.id] && answers[q.id] !== q.answer);
+    if (ui.mode === "pending") list = list.filter(q => !answers[q.id]);
+    if (ui.mode === "verify") list = list.filter(q => q.confidence !== "h");
+    order = list.map(q => q.id);
+    if (ui.shuffle) for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    idx = keepId && order.includes(keepId) ? order.indexOf(keepId) : 0;
+    if (!keepId && ui.mode === "all") { const first = order.findIndex(id => !answers[id]); if (first > 0) idx = first; }
+  }
+
+  function renderGlobal() {
+    const s = stats(Object.values(byId));
+    const done = s.ok + s.bad;
+    const pct = done ? Math.round(100 * s.ok / done) : 0;
+    $("global").innerHTML =
+      `<span>Respondidas <b>${done}</b>/${s.total}</span><span class="ok">Correctas <b>${s.ok}</b></span><span class="bad">Incorrectas <b>${s.bad}</b></span><span>Acierto <b>${pct}%</b></span>`;
+  }
+  function renderGroups() {
+    const all = [{ id: "__all", nameEs: "Todas las materias", name: "ALL SYSTEMS", questions: Object.values(byId) }].concat(groups);
+    $("groups").innerHTML = all.map(g => {
+      const s = stats(g.questions.map(q => byId[q.id]));
+      const o = 100 * s.ok / s.total, x = 100 * s.bad / s.total;
+      return `<button class="g" data-g="${g.id}" aria-current="${g.id === ui.group}">
+        <span class="nm">${esc(g.nameEs)}</span><span class="ct">${s.ok + s.bad}/${s.total}</span>
+        <span class="en">${esc(g.name)}</span>
+        <span class="bar"><i class="o" style="width:${o}%"></i><i class="x" style="width:${x}%"></i></span></button>`;
+    }).join("");
+  }
+  function renderFilters() {
+    const list = groupQs(ui.group);
+    const nWrong = list.filter(q => answers[q.id] && answers[q.id] !== q.answer).length;
+    const nPend = list.filter(q => !answers[q.id]).length;
+    const nVer = list.filter(q => q.confidence !== "h").length;
+    const modes = [["all", "Todas"], ["pending", `Sin responder · ${nPend}`], ["wrong", `Falladas · ${nWrong}`], ["verify", `Para verificar · ${nVer}`]];
+    $("filters").innerHTML = modes.map(([m, l]) => `<button class="chip" data-m="${m}" aria-pressed="${ui.mode === m}">${l}</button>`).join("")
+      + `<button class="chip" data-shuffle aria-pressed="${ui.shuffle}">Mezclar</button>`;
+  }
+
+  function renderDU() {
+    const du = $("du");
+    if (!order.length) {
+      const msg = ui.mode === "wrong" ? "No tenés preguntas falladas en esta materia." : ui.mode === "pending" ? "Respondiste todas las preguntas de esta materia." : "No hay preguntas para este filtro.";
+      du.innerHTML = `<div class="empty">${msg}</div><div class="nav"><button class="btn" data-m="all">Ver todas</button></div>`;
+      return;
+    }
+    const q = byId[order[idx]];
+    const g = groups.find(x => x.id === q.gid);
+    const chosen = answers[q.id];
+    const answered = !!chosen;
+    const conf = CONF[q.confidence] || CONF.h;
+    const opts = q.options.map(o => {
+      let cls = "";
+      if (answered) cls = o.key === q.answer ? "correct" : (o.key === chosen ? "wrong" : "dim");
+      return `<li><button class="opt ${cls}" data-k="${o.key}" ${answered ? "disabled" : ""}><span class="k">${o.key}</span><span class="t">${esc(o.text)}</span></button></li>`;
+    }).join("");
+    let verdict = "";
+    if (answered) {
+      const ok = chosen === q.answer;
+      verdict = `<div class="verdict ${ok ? "ok" : "bad"}">
+        <div class="v">${ok ? "Correcto" : "Incorrecto"}${ok ? "" : ` · respuesta ${q.answer}`}</div>
+        <p>${esc(q.explanation)}</p>
+        <div class="ref"><span>FCOM <b>${esc(q.fcomRef)}</b></span><span>${conf[1]}</span></div>
+        ${q.confidence !== "h" ? `<div class="note">Esta respuesta no tiene confirmación plena: chequeala en el FCOM antes del examen.</div>` : ""}
+      </div>`;
+    }
+    const dots = order.length <= 120 ? `<div class="dots">${order.map((id, i) => {
+      const a = answers[id]; const c = a ? (a === byId[id].answer ? "o" : "x") : "";
+      return `<button class="${c} ${i === idx ? "cur" : ""}" data-i="${i}" aria-label="Pregunta ${i + 1}"></button>`;
+    }).join("")}</div>` : "";
+    du.innerHTML = `
+      <div class="du-head"><span class="pos">${idx + 1} / ${order.length}</span><span>${esc(g.nameEs)} · Nº ${q.n}</span><span class="spacer"></span><span class="conf ${q.confidence}" title="${conf[1]}">${conf[0]}</span></div>
+      <h2 class="q">${esc(q.q)}</h2>
+      <ul class="opts">${opts}</ul>
+      ${verdict}
+      <div class="nav">
+        <button class="btn" data-nav="-1" ${idx === 0 ? "disabled" : ""}>Anterior</button>
+        <button class="btn primary" data-nav="1" ${idx >= order.length - 1 ? "disabled" : ""}>Siguiente</button>
+        <span class="kbd">Teclas A–F · ← →</span>
+        <span class="spacer"></span>
+        ${confirmReset
+          ? `<span class="confirm">¿Borrar las respuestas de esta materia? <button class="btn" data-reset="yes">Borrar</button><button class="btn ghost" data-reset="no">Cancelar</button></span>`
+          : `${answered ? `<button class="btn ghost" data-retry>Reintentar</button>` : ""}<button class="btn ghost" data-reset="ask">Reiniciar materia</button>`}
+      </div>
+      ${dots}`;
+  }
+  function renderAll() {
+    renderGlobal(); renderGroups(); renderFilters(); renderDU();
+    $("storeNote").textContent = storageOk ? "Tu progreso se guarda en este navegador." : "Este navegador no permite guardar el progreso; se perderá al cerrar la página.";
+  }
+
+  function answer(k) {
+    const id = order[idx]; if (!id || answers[id]) return;
+    if (!byId[id].options.some(o => o.key === k)) return;
+    answers[id] = k; persist(); renderAll();
+  }
+  function go(d) { const n = idx + d; if (n < 0 || n >= order.length) return; idx = n; confirmReset = false; renderDU(); window.scrollTo({ top: 0 }); }
+  function setGroup(gid) { ui.group = gid; confirmReset = false; buildOrder(); persist(); renderAll(); if (location.hash !== "#" + gid) history.replaceState(null, "", "#" + gid); }
+
+  document.addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.g) return setGroup(t.dataset.g);
+    if (t.dataset.m) { ui.mode = t.dataset.m; buildOrder(); persist(); return renderAll(); }
+    if ("shuffle" in t.dataset) { ui.shuffle = !ui.shuffle; buildOrder(order[idx]); persist(); return renderAll(); }
+    if (t.dataset.k) return answer(t.dataset.k);
+    if (t.dataset.nav) return go(+t.dataset.nav);
+    if (t.dataset.i) { idx = +t.dataset.i; return renderDU(); }
+    if ("retry" in t.dataset) { delete answers[order[idx]]; persist(); return renderAll(); }
+    if (t.dataset.reset === "ask") { confirmReset = true; return renderDU(); }
+    if (t.dataset.reset === "no") { confirmReset = false; return renderDU(); }
+    if (t.dataset.reset === "yes") { groupQs(ui.group).forEach(q => delete answers[q.id]); confirmReset = false; persist(); buildOrder(); return renderAll(); }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    if (/^[A-F]$/.test(k)) answer(k);
+    else if (e.key === "ArrowRight" || e.key === "Enter") go(1);
+    else if (e.key === "ArrowLeft") go(-1);
+  });
+  function fromHash() {
+    const h = location.hash.slice(1);
+    if (h && (h === "__all" || groups.some(g => g.id === h)) && h !== ui.group) { ui.group = h; buildOrder(); renderAll(); }
+  }
+  window.addEventListener("hashchange", fromHash);
+
+  const h = location.hash.slice(1);
+  if (h && (h === "__all" || groups.some(g => g.id === h))) ui.group = h;
+  buildOrder(); renderAll();
+})();
+</script>
