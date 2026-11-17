@@ -270,17 +270,13 @@ details .inner { display: grid; gap: 10px; padding-bottom: 14px; }
     <div class="warn" id="warn"></div>
   </section>
 
-  <section class="card">
-    <h2>Recibo estimado</h2>
-    <table class="recibo"><tbody id="recibo"></tbody></table>
-  </section>
 
   <details class="card notes">
     <summary>Cómo calcula</summary>
     <ul>
       <li>Montos de la escala de Primeros Oficiales de junio 2026 (ya incluye el 17,94 % acumulado de dic-25 a may-26). Si hubo aumentos después, cargalos en «Ajustes avanzados».</li>
       <li>Productividad por hora: desde las 45 h hasta las 60 h al valor normal, de 60 a 75 h al valor «&gt; 60» y desde 75 h al valor «&gt; 75».</li>
-      <li>Viático unificado: $ 83.081,03 por día volado el mes anterior. Es no remunerativo: no paga aportes ni Ganancias.</li>
+      <li>Viático unificado: $ 83.081,03 por día volado el mes anterior. Se paga aparte del recibo, sin aportes ni Ganancias, y se suma al total a cobrar.</li>
       <li>Bono No Duty y Período de servicio (excepción) se pagan al valor de «Período de servicio» de tu categoría.</li>
       <li>Cambio de rol: se paga desde el cuarto cambio del mes.</li>
       <li>Licencia por enfermedad: suma la remuneración promedio ÷ 30 y descuenta el sueldo fijo ÷ 30 por día.</li>
@@ -293,8 +289,8 @@ details .inner { display: grid; gap: 10px; padding-bottom: 14px; }
 
 <div class="dock" aria-live="polite">
   <div class="in">
-    <div><span>Neto estimado</span><b id="dockNeto">–</b></div>
-    <div class="r"><span>Bruto</span><b id="dockBruto">–</b></div>
+    <div><span>Total a cobrar</span><b id="dockNeto">–</b></div>
+    <div class="r"><span>Bruto del recibo</span><b id="dockBruto">–</b></div>
   </div>
 </div>
 
@@ -525,8 +521,10 @@ if (typeof module !== 'undefined') module.exports = { calcular, CATEGORIAS, GENE
       : `Productividad: <b style="color:var(--ok)">${fmt0(prod)}</b>`;
 
     document.getElementById('sum').innerHTML = `
-      <div class="neto"><span>Neto estimado</span><b>${fmt0(r.neto)}</b></div>
-      <div><span>Bruto</span><b>${fmt0(r.bruto)}</b></div>
+      <div class="neto"><span>Total a cobrar</span><b>${fmt0(r.neto)}</b></div>
+      <div><span>Bruto del recibo</span><b>${fmt0(r.remunerativo)}</b></div>
+      <div><span>Neto del recibo</span><b>${fmt0(r.neto - r.noRemunerativo)}</b></div>
+      <div><span>Viático (aparte)</span><b>${fmt0(r.noRemunerativo)}</b></div>
       <div><span>Descuentos</span><b>${fmt0(r.totalDesc)}</b></div>
       <div><span>Aportes</span><b>${fmt0(r.aportes)}</b></div>
       <div><span>Ganancias (estimada)</span><b>${fmt0(r.ganancias)}</b></div>`;
@@ -535,17 +533,8 @@ if (typeof module !== 'undefined') module.exports = { calcular, CATEGORIAS, GENE
     if (e.enfermedad > 0 && !e.baseLic) avisos.push('Licencia por enfermedad calculada con el bruto del mes como base. Si tenés la remuneración promedio, cargala en «Ajustes avanzados».');
     document.getElementById('warn').innerHTML = avisos.map(a => `<p style="margin:2px 0">${a}</p>`).join('');
 
-    const fila = i => `<tr class="${i.monto < 0 ? 'neg' : ''}"><td>${i.cod ? `<span class="cod">${i.cod}</span>` : ''}${i.nombre}</td><td class="u">${i.unidad === '' || i.unidad == null ? '' : String(i.unidad).replace('.', ',')}</td><td class="m">${fmt(i.monto)}</td></tr>`;
-    document.getElementById('recibo').innerHTML =
-      r.items.map(fila).join('') +
-      `<tr class="tot"><td>Remunerativo</td><td></td><td class="m">${fmt(r.remunerativo)}</td></tr>` +
-      (r.noRem.length ? r.noRem.map(fila).join('') + `<tr class="tot"><td>No remunerativo</td><td></td><td class="m">${fmt(r.noRemunerativo)}</td></tr>` : '') +
-      r.desc.map(fila).join('') +
-      (r.redondeo ? fila({ cod: '16000', nombre: 'Redondeo', unidad: '', monto: r.redondeo }) : '') +
-      `<tr class="tot"><td>Sueldo neto</td><td></td><td class="m">${fmt(r.neto)}</td></tr>`;
-
     document.getElementById('dockNeto').textContent = fmt0(r.neto);
-    document.getElementById('dockBruto').textContent = fmt0(r.bruto);
+    document.getElementById('dockBruto').textContent = fmt0(r.remunerativo);
   }
 
   restaurar();
